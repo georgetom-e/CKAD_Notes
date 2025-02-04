@@ -1,3 +1,11 @@
+Tips for the Exam: 
+
+# ATTEMPT ALL EASY QUESTIONS FIRST, DON'T GET STUCK, RETURN LATER. 
+
+# GET GOOD WITH YAML (practice indentation) 
+
+# USE ALIASES (po, pvc, rs, np...) 
+
 
 A. CORE CONCEPTS 
 
