@@ -6,6 +6,8 @@ Tips for the Exam:
 
 # USE ALIASES (po, pvc, rs, np...) 
 
+# USE IMPERATIVE COMMANDS. Unsure? use command --help | grep -i "goalKeyword"
+
 
 A. CORE CONCEPTS 
 
