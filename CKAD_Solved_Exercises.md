@@ -145,4 +145,95 @@ Crude way: k get events | grep -i "failed..." | awk '{print $3}' or whatever col
 Better way: kubectl get events -o json | jq -r '.items[] | select(.message | contains("Liveness probe failed")).involvedObject | .namespace + "/" + .name'
 
 
+LABELS, DEPLOYMENTS 
 
+Use imperatve --labels to create pod with label 
+
+Get pods with the app=grey label: k get pods --selector=app=grey 
+
+IMPORTANT: use k label / k annotate to make changes in labels after object creation
+
+Q) Rename a pod withe label app=blue to app=red 
+   k label --overwrite pod podName app=blue 
+
+
+Q) Add a new label tier=web to all pods having 'app=v2' or 'app=v1' labels
+   k label po -l "app in (v1, v2)" tier=web 
+
+
+Q) Remove the label app=blue from a pod p2
+   k label po p2 app-
+
+Q) Annotate a pod p1 with the annotation version=3.14
+   k annotate pod p1 version=3.14
+
+ Q)Now remove this annotation 
+   k annotate pod p1 versio- 
+
+POD PLACEMENT 
+
+Q) Create a pod that will be deployed to a Node that has the label 'accelerator=nvidia-tesla-p100'
+
+  1. label the node: k label node control-plane accelerator=nvidia
+  2. create pod with node selector to that label: k run pod --image-nginx > ans.yaml, vi ans.yaml to add nodeSelector: acclerator=nvidia
+
+Q) Taint a node with key tier and value frontend with the effect NoSchedule. Then, create a pod that tolerates this taint.
+
+  k taint node controlplane tier=frontend:NoSchedule 
+  k run pod p1 --image=nginx --dry-run=client -o yaml > ans.yaml
+  vi ans.yam to include tolerations of tier equal frontend
+
+Q) Use Node affinity to achieve the same as above 
+
+    vi ans.yaml, modify to include: 
+
+    spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: tier
+            operator: In
+            values:
+            - frontboy
+
+DEPLOYMENT STRATEGIES 
+
+
+Blue-Green: two versions of the app (blue, green) label blue pods v1, green pods v2, create a svc to select pods with label v1, then change svc's selector to match green pods v2.
+
+
+
+Canary: traffic to both deployment versions-common label; trick is to have fewer pods of the newer version to reduce traffic on the new version. 
+
+Q) change the image of a deployment; this triggers a rollout.
+   
+   k set image deployment depName containerName=newImage 
+
+Q) check the rollout status, history, pause, resume undo the rollout
+
+   k rollout status/history/pause/resume/undo deployment depName
+
+Q) rollback to revision 2 
+
+  k rollout undo deployment depName --to-revision=2
+
+Q) Autoscale the deployment, pods between 5 and 10, targeting CPU utilization at 80%
+
+  k autoscale deployment depName --min=5 --max=10 --cpu-percent=80 (THIS CREATES A HPA, k get hpa)
+
+Q) Implement canary deployment by running two instances of nginx marked as version=v1 and version=v2 so that the load is balanced at 75%-25% ratio
+
+   (75-25 => 3: 1 replicas)
+
+   Crude High Level: 
+
+   1. create deployment nginx-v1 (replicas=3), nginx-v2 (replicas=1); label both the same (strat: canary-ng)
+   2. create a svc that selects both versions via the canargy-ng label
+
+   Actual Deployment Strategy: 
+
+   1. Create deployment nginx-v1 replica=3 label canary-ng, for testing purposes let the container execute echo hello. 
+   2. Create a svc that connects to the canary-ng label; test connectivity by performing a wget from a test busybox pod to the svc. 
+   3. Create deployment nginx-v2 replicas=1 with label canary-ng; test connectivity again too see traffic shared between both versions in the ratio 3:1 
