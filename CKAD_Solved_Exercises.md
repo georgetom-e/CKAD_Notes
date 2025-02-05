@@ -237,3 +237,15 @@ Q) Implement canary deployment by running two instances of nginx marked as versi
    1. Create deployment nginx-v1 replica=3 label canary-ng, for testing purposes let the container execute echo hello. 
    2. Create a svc that connects to the canary-ng label; test connectivity by performing a wget from a test busybox pod to the svc. 
    3. Create deployment nginx-v2 replicas=1 with label canary-ng; test connectivity again too see traffic shared between both versions in the ratio 3:1 
+
+    k create deployment nginx-1 --image=nginx --replicas=3 -- /bin/bash -c "echo from v1" --port 80 
+    k create deployment nginx-2 --image=nginx --replicas=1 -- /bin/bash -c "echo from v2" --port 80 
+    k label deployments.apps nginx-1 strat=canary
+    k label deployments.apps nginx-2 strat=canary
+    k create svc clusterip canary-svc --tcp 80:80 --> edit svc to include selector labels for start=canary
+
+    test traffic: 
+   
+IMPORTANT: kubectl run test-pod --rm -it --image=busybox -- /bin/sh  -> to get a network test terminal 
+           while true; do wget -qO- canary-svc:80; echo; sleep 1; done  -> to test network within that tets container. 
+
