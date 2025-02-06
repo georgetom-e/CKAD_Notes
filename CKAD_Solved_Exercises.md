@@ -238,8 +238,8 @@ Q) Implement canary deployment by running two instances of nginx marked as versi
    2. Create a svc that connects to the canary-ng label; test connectivity by performing a wget from a test busybox pod to the svc. 
    3. Create deployment nginx-v2 replicas=1 with label canary-ng; test connectivity again too see traffic shared between both versions in the ratio 3:1 
 
-    k create deployment nginx-1 --image=nginx --replicas=3 -- /bin/bash -c "echo from v1" --port 80 
-    k create deployment nginx-2 --image=nginx --replicas=1 -- /bin/bash -c "echo from v2" --port 80 
+    k create deployment nginx-1 --image=nginx --replicas=3 -- /bin/sh -c "echo from v1" --port 80 
+    k create deployment nginx-2 --image=nginx --replicas=1 -- /bin/sh -c "echo from v2" --port 80 
     k label deployments.apps nginx-1 strat=canary
     k label deployments.apps nginx-2 strat=canary
     k create svc clusterip canary-svc --tcp 80:80 --> edit svc to include selector labels for start=canary
@@ -249,3 +249,38 @@ Q) Implement canary deployment by running two instances of nginx marked as versi
 IMPORTANT: kubectl run test-pod --rm -it --image=busybox -- /bin/sh  -> to get a network test terminal 
            while true; do wget -qO- canary-svc:80; echo; sleep 1; done  -> to test network within that tets container. 
 
+JOBS AND CRONJOBS 
+
+Q) Create a job named pi with image perl:5.34 that runs the command with arguments "perl -Mbignum=bpi -wle 'print bpi(2000)'"
+   k create job pi --image=perl:5.34 -- perl -Mbignum=bpi -wle 'print bpi(2000)'
+
+Q) Create a job with the image busybox that executes the command 'echo hello;sleep 30;echo world'
+   k create job testjob --image=busybox -- /bin/sh -c "echo hello; sleep 30; echo world"
+
+Q) Create a job but ensure that it will be automatically terminated by kubernetes if it takes more than 30 seconds to execute
+  IMPORTANT: .spec.activeDeadlineSeconds: x 
+  IMPORTANT: ONLY FIVE STARS IN SCHEDULE, every minute: */1 * * * *; every hour: * */1 * * * 
+   k create jonb uselessjob --image=busybox -- /bin/sh -c "echo hi; sleep 32; echo world" --dry-run=client -o yaml > ans.yaml 
+   ans.yaml -> activeDeadlineSeconds: 30 
+
+Q) Create a cron job with image busybox that runs every minute and writes 'date; echo Hello from the Kubernetes cluster' to standard output. The cron job should be terminated if it takes more than 17 seconds to start execution after its scheduled time (i.e. the job missed its scheduled time).
+   k create cronjob clock --image=busybox --schedule='*/1 * * *' -- /bin/sh -c "date" --dry-run=client -o yaml > ans.yaml 
+   
+Q) Create a job from an existing cron job 
+   k create job whatever --from=cronjob/clock 
+
+
+SERVICES, INGRESS 
+
+Q) Create a nginx pod, expose it through a clusterip service, then access the nginx pod through the service; 
+
+    1. k run nginx --image=nginx 
+    2. k expose pod nginx --port=80 (creates a ClusterIp by default with same name as pod, port 80 is the container's port; service port also 80)
+   3. k get endpoints nginx and double test as below: 
+IMPORTANT: test service endpoints --> k run test --image=busybox --rm -it -- /bin/sh --> open test pod's terminal 
+            then in terminal: while true; do wget -qO- clusterIP:port ;echo ; sleep 5; done
+
+Q) Convert this clusterIP service into a NodePort type --> change def file tyep: 
+
+
+IMPORTANT: it's always faster to expose an object rather than creating a service and then creating a selector-label situation. 
